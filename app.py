@@ -2,6 +2,7 @@ import streamlit as st
 import base64
 from streamlit_chat import message
 
+# --- Set Background Image ---
 def set_background(image_file):
     with open(image_file, "rb") as img:
         bg_bytes = base64.b64encode(img.read()).decode()
@@ -20,7 +21,7 @@ def set_background(image_file):
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.5);
             z-index: 9998;
         }}
         .gift-popup {{
@@ -50,40 +51,22 @@ def set_background(image_file):
             margin-top: 15px;
             font-size: 16px;
         }}
+        .stDeployButton, .st-emotion-cache-1y4p8pa {{
+            display: none !important;
+        }}
         </style>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
 set_background("bg.jpg")
 
-# Read URL query params
-query_params = st.experimental_get_query_params()
-gift_param = query_params.get("gift", ["0"])[0]
-play_video_param = query_params.get("playvideo", ["0"])[0]
+# --- Balloons on First Load ---
+if "loaded_once" not in st.session_state:
+    st.session_state.loaded_once = True
+    st.balloons()
 
-# Initialize session state for messages and popup
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-if "show_gift" not in st.session_state:
-    st.session_state.show_gift = False
-
-if "play_video" not in st.session_state:
-    st.session_state.play_video = False
-
-# Sync session state with URL params
-if gift_param == "1":
-    st.session_state.show_gift = True
-else:
-    st.session_state.show_gift = False
-
-if play_video_param == "1":
-    st.session_state.play_video = True
-else:
-    st.session_state.play_video = False
-
-# --- Intro ---
+# --- Title and Intro ---
 st.title("Happy Birthday My MONKEYYYY🎂")
 st.markdown(
     "Welcome to YOUR special chatbot :p this chatbot was made specially for you. "
@@ -91,6 +74,14 @@ st.markdown(
     "**Don’t be too smart ofc, it’s just a mini app for your birthday 💖**"
 )
 
+# --- Session State ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "show_gift" not in st.session_state:
+    st.session_state.show_gift = False
+
+# --- Loving Replies ---
 loving_messages = {
     "how much do you love me": "are you dumb what kinda question is that, ofc i love you, you're the best thing ever happened to me and id never wanna leave you :3",
     "why do you love me": "Because of who you are, youre the kindest soul ive even met. (also bcz ur hot)",
@@ -98,15 +89,15 @@ loving_messages = {
     "what's the plan for my birthday": "To spend the whole night making you happy and feeling loved. :>"
 }
 
-# --- Chat Input + Ask button ---
-# We'll create a form to hold input + button (so enter doesn't submit automatically)
-with st.form(key="chat_form", clear_on_submit=True):
-    user_input = st.text_input("DROP YOUR QUESTION:")
-    submitted = st.form_submit_button("Ask")
+# --- Input Box ---
+user_input = st.text_input("DROP YOUR QUESTION:", key="input_text")
 
-if submitted and user_input:
+# --- Ask Button BELOW input ---
+ask_pressed = st.button("Ask 💬")
+
+# --- Generate Response ---
+if ask_pressed and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
-
     question = user_input.lower().strip()
 
     if question in loving_messages:
@@ -116,51 +107,45 @@ if submitted and user_input:
     elif "who made you" in question:
         reply = "Someone who really really loves you 💕"
     else:
-        reply = "That's so sweet of you to say 🥺"
+        reply = "sorry i didnt prepare the bot to answer this"
 
     st.session_state.messages.append({"role": "assistant", "content": reply})
 
-# --- Display chat history ---
+# --- Chat History ---
 for i, msg in enumerate(st.session_state.messages):
     is_user = msg["role"] == "user"
     message(msg["content"], is_user=is_user, key=str(i))
 
-# --- Buttons side by side: Gift and Heart ---
-col1, col2 = st.columns([1,1])
+# --- Gift Button ---
+if st.button("🎁 Your Gift"):
+    st.session_state.show_gift = True
 
-with col1:
-    if st.button("🎁 Your Gift"):
-        st.experimental_set_query_params(gift="1")
-        st.experimental_rerun()
-
-with col2:
-    if st.button("❤️"):
-        st.experimental_set_query_params(playvideo="1")
-        st.experimental_rerun()
-
-# --- Gift popup ---
+# --- Gift Popup ---
 if st.session_state.show_gift:
     gift_data = base64.b64encode(open("gift.jpg", "rb").read()).decode()
-    popup_html = f"""
+    st.markdown(f"""
     <div class="popup-overlay"></div>
     <div class="gift-popup">
         <img src="data:image/jpeg;base64,{gift_data}" width="325" style="max-height:75vh; object-fit:contain;" />
-        <button class="close-btn" onclick="
-            const url = new URL(window.location);
-            url.searchParams.delete('gift');
-            window.history.replaceState(null, '', url);
-            window.location.reload();
-        ">Close Gift 🎁</button>
+        <div style="margin-top: 20px;">
+            <form action="" method="post">
+                <button name="close_gift" class="close-btn">⬅️ Back</button>
+            </form>
+        </div>
     </div>
-    """
-    st.markdown(popup_html, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# --- Video popup ---
-if st.session_state.play_video:
-    video_file = open("gift2.MOV", "rb").read()
-    st.video(video_file, format="video/mp4", start_time=0)  # Streamlit handles MOV but mp4 is more universal; if issues, convert MOV to mp4
+    if st.query_params.get("close_gift") is not None:
+        st.session_state.show_gift = False
+        st.rerun()
 
-    # Also add a "Close Video" button to stop it and remove URL param
-    if st.button("Close Video ❤️"):
-        st.experimental_set_query_params()
-        st.experimental_rerun()
+# --- Add Space Before Video ---
+st.markdown("<div style='height: 700px;'></div>", unsafe_allow_html=True)
+
+# --- Birthday Video (make sure it's mp4) ---
+try:
+    with open("gift2.mp4", "rb") as video_file:
+        video_bytes = video_file.read()
+    st.video(video_bytes)
+except FileNotFoundError:
+    st.warning("Video file not found. Please convert `gift2.MOV` to `gift2.mp4`.")
