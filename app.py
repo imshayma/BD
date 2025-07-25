@@ -93,7 +93,7 @@ loving_messages = {
 user_input = st.text_input("DROP YOUR QUESTION:", key="input_text")
 
 # --- Ask Button BELOW input ---
-ask_pressed = st.button("Ask 💬")
+ask_pressed = st.button("Ask")
 
 # --- Generate Response ---
 if ask_pressed and user_input:
